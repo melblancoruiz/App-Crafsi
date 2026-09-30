@@ -218,74 +218,6 @@
       padding: 8px 12px 16px 12px;
     }
 
-    .section-label {
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--cr-gray-dark);
-      margin: 6px 4px 6px 4px;
-    }
-    .section-label:not(:first-child) {
-      margin-top: 14px;
-    }
-
-    /* ACORDEÓN DE GRUPOS DE CATEGORÍAS */
-    .accordion-group {
-      margin-bottom: 8px;
-    }
-    .accordion-header {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      background: #FFFFFF;
-      border: 1px solid var(--cr-gray-border);
-      border-radius: var(--radius-md);
-      padding: 13px 14px;
-      font-family: inherit;
-      cursor: pointer;
-      box-shadow: var(--shadow-sm);
-    }
-    .accordion-header.has-value {
-      border-color: #BFDBFE;
-      background: #FDFEFF;
-    }
-    .accordion-header:active {
-      background-color: var(--cr-gray-light);
-    }
-    .accordion-header-label {
-      font-size: 14px;
-      font-weight: 700;
-      color: #212529;
-      flex: 1;
-      text-align: left;
-    }
-    .accordion-badge {
-      background: var(--cr-teal-bg);
-      color: var(--cr-teal);
-      font-size: 12px;
-      font-weight: 800;
-      padding: 2px 9px;
-      border-radius: 12px;
-      border: 1px solid #CFE6E8;
-    }
-    .accordion-chevron {
-      font-size: 18px;
-      font-weight: 700;
-      color: #868E96;
-      display: inline-block;
-      transform: rotate(0deg);
-      transition: transform 0.2s ease;
-    }
-    .accordion-chevron.open {
-      transform: rotate(90deg);
-    }
-    .accordion-body {
-      padding-top: 8px;
-    }
-
     .category-item {
       background: #FFFFFF;
       border-radius: var(--radius-md);
@@ -894,18 +826,6 @@
       { id: 21, name: "Otros (detallar)" }
     ];
 
-    // Categorías más comunes en la caminata a Luján: siempre visibles arriba, sin acordeón
-    const PINNED_CATEGORY_IDS = [1, 3, 5, 21]; // Ampollas, Traumatismos Musculares LEVES (calambres/dolores de piernas), Hipotensiones, Otros (detallar)
-
-    // El resto de las categorías, agrupadas por acordeón para ocupar menos espacio
-    const CATEGORY_GROUPS = [
-      { id: 'traumatismos', label: 'Traumatismos', catIds: [4, 19, 20] },
-      { id: 'termicas', label: 'Térmicas / Ambientales', catIds: [11, 12, 13, 18] },
-      { id: 'cardio', label: 'Cardiovascular', catIds: [2, 10, 15] },
-      { id: 'heridas', label: 'Piel y Heridas', catIds: [7, 8, 9] },
-      { id: 'otros_sistemas', label: 'Otros Sistemas', catIds: [6, 14, 16, 17] }
-    ];
-
     // ESTADO DE LA APP
     const STORAGE_KEY = 'cruz_roja_lujan_db_v2';
     const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyeC5_-fJLCgdsIFaIyyAITW2PH7MQFNUK2msFEUNyXf5DU9KIrmmlJnIvWRXv7corY/exec';
@@ -925,8 +845,7 @@
       currentRealDate: null,
       currentRealHour: null,
       isEditUnlocked: false,
-      filterActiveOnly: false,
-      expandedGroups: {}
+      filterActiveOnly: false
     };
 
     // FORMATEADORES DE FECHA/HORA
@@ -980,9 +899,6 @@
       }
       if (!appState.dataByDate) {
         appState.dataByDate = {};
-      }
-      if (!appState.expandedGroups) {
-        appState.expandedGroups = {};
       }
 
       appState.currentRealDate = todayISO;
@@ -1161,10 +1077,6 @@
     }
 
     // ACTUALIZACIONES UI ESPECÍFICAS
-    function findGroupForCategory(catId) {
-      return CATEGORY_GROUPS.find(g => g.catIds.includes(catId));
-    }
-
     function updateCategoryUI(catId) {
       const inputEl = document.getElementById(`count-input-${catId}`);
       const btnMinus = document.getElementById(`btn-minus-${catId}`);
@@ -1183,21 +1095,6 @@
         const detailsBox = document.getElementById('cat-details-21');
         if (detailsBox) {
           detailsBox.style.display = count > 0 ? 'block' : 'none';
-        }
-      }
-
-      // Si la categoría pertenece a un grupo del acordeón, refrescamos su badge/estado
-      const group = findGroupForCategory(catId);
-      if (group) {
-        const headerEl = document.getElementById(`accordion-header-${group.id}`);
-        const badgeEl = document.getElementById(`accordion-badge-${group.id}`);
-        if (headerEl && badgeEl) {
-          let groupTotal = 0;
-          group.catIds.forEach(id => { groupTotal += hourData[id]?.count || 0; });
-          badgeEl.textContent = groupTotal;
-          badgeEl.style.display = groupTotal > 0 ? 'inline-block' : 'none';
-          if (groupTotal > 0) headerEl.classList.add('has-value');
-          else headerEl.classList.remove('has-value');
         }
       }
 
@@ -1252,71 +1149,11 @@
 
       const hourData = appState.dataByDate[selDate]?.[selHour] || {};
 
-      // TOP 3: categorías más comunes en la caminata, siempre visibles arriba
-      const pinnedCats = PINNED_CATEGORY_IDS
-        .map(id => OFFICIAL_CATEGORIES.find(c => c.id === id))
-        .filter(cat => !(appState.filterActiveOnly && (hourData[cat.id]?.count || 0) === 0));
-
-      if (pinnedCats.length > 0) {
-        const label = document.createElement('div');
-        label.className = 'section-label';
-        label.textContent = 'Acceso rápido';
-        container.appendChild(label);
-        pinnedCats.forEach(cat => {
-          container.appendChild(renderCategoryItem(cat, hourData, locked));
-        });
-      }
-
-      // RESTO: agrupadas en acordeón para ocupar menos espacio
-      const groupsWithContent = CATEGORY_GROUPS.map(group => {
-        const catsInGroup = group.catIds.map(id => OFFICIAL_CATEGORIES.find(c => c.id === id));
-        const visibleCats = appState.filterActiveOnly
-          ? catsInGroup.filter(cat => (hourData[cat.id]?.count || 0) > 0)
-          : catsInGroup;
-        return { group, catsInGroup, visibleCats };
-      }).filter(g => g.visibleCats.length > 0);
-
-      if (groupsWithContent.length > 0) {
-        const label = document.createElement('div');
-        label.className = 'section-label';
-        label.textContent = 'Otras categorías';
-        container.appendChild(label);
-      }
-
-      groupsWithContent.forEach(({ group, catsInGroup, visibleCats }) => {
-        let groupTotal = 0;
-        catsInGroup.forEach(cat => { groupTotal += hourData[cat.id]?.count || 0; });
-        const isExpanded = !!appState.expandedGroups[group.id];
-
-        const groupEl = document.createElement('div');
-        groupEl.className = 'accordion-group';
-
-        const headerEl = document.createElement('button');
-        headerEl.type = 'button';
-        headerEl.id = `accordion-header-${group.id}`;
-        headerEl.className = `accordion-header ${groupTotal > 0 ? 'has-value' : ''}`;
-        headerEl.innerHTML = `
-          <span class="accordion-header-label">${group.label}</span>
-          <span class="accordion-badge" id="accordion-badge-${group.id}" style="display: ${groupTotal > 0 ? 'inline-block' : 'none'}">${groupTotal}</span>
-          <span class="accordion-chevron ${isExpanded ? 'open' : ''}">›</span>
-        `;
-        headerEl.onclick = () => {
-          appState.expandedGroups[group.id] = !appState.expandedGroups[group.id];
-          saveState();
-          renderScreen();
-        };
-        groupEl.appendChild(headerEl);
-
-        if (isExpanded) {
-          const bodyEl = document.createElement('div');
-          bodyEl.className = 'accordion-body';
-          visibleCats.forEach(cat => {
-            bodyEl.appendChild(renderCategoryItem(cat, hourData, locked));
-          });
-          groupEl.appendChild(bodyEl);
-        }
-
-        container.appendChild(groupEl);
+      // Todas las categorías, en fila, en el orden oficial (1 a 21)
+      OFFICIAL_CATEGORIES.forEach(cat => {
+        const count = hourData[cat.id]?.count || 0;
+        if (appState.filterActiveOnly && count === 0) return;
+        container.appendChild(renderCategoryItem(cat, hourData, locked));
       });
 
       updateTotals();
